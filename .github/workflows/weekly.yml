@@ -1,0 +1,46 @@
+name: Weekly Scopus Trends + Directions
+
+permissions:
+  contents: write
+
+on:
+  schedule:
+    - cron: "0 0 * * 1"   # Monday 09:00 KST (Monday 00:00 UTC)
+  workflow_dispatch:
+
+jobs:
+  run-weekly:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install dependencies
+        run: |
+          pip install -r requirements.txt
+
+      - name: Run weekly monitor
+        env:
+          SCOPUS_API_KEY: ${{ secrets.SCOPUS_API_KEY }}
+          EMAIL_FROM: ${{ secrets.EMAIL_FROM }}
+          EMAIL_TO: ${{ secrets.EMAIL_TO }}
+          GMAIL_APP_PASSWORD: ${{ secrets.GMAIL_APP_PASSWORD }}
+          SCOPUS_QUERY_CORE: ${{ secrets.SCOPUS_QUERY_CORE }}
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          GEMINI_MODEL: ${{ secrets.GEMINI_MODEL }}
+          LAB_CONTEXT: ${{ secrets.LAB_CONTEXT }}
+        run: |
+          python monitor_weekly.py
+
+      - name: Commit updated state and snapshots
+        run: |
+          git config user.name "scopus-monitor-bot"
+          git config user.email "scopus-monitor-bot@users.noreply.github.com"
+          git add state.json snapshots/*.csv || true
+          git commit -m "Weekly update state and snapshots" || echo "No changes to commit"
+          git push
